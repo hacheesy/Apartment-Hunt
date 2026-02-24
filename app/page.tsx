@@ -16,6 +16,7 @@ const makeDefault = (name = "Apartment 1") => ({
   extraDiscount: 1000,
   splitPct: 50,
   selectedFree: [0, 5, 10],
+  splitIncludes: { rent: true, parking: true, utilities: true, wifi: true } as Record<string, boolean>,
 });
 
 function InputField({ label, value, onChange, prefix = "$", suffix, min = 0, max = 100000, step = 50 }: any) {
@@ -140,8 +141,20 @@ function ApartmentTab({ cfg, setCfg }: any) {
   const update = (key: string) => (val: any) => setCfg((prev: any) => ({ ...prev, [key]: val }));
   const alwaysOwed = data.alwaysOwed;
   const totalMonthlyHousing = cfg.rent + alwaysOwed;
-  const joseRentShare = Math.round(totalMonthlyHousing * data.josePct);
-  const emiRentShare = totalMonthlyHousing - joseRentShare;
+
+  const splitTotal = (cfg.splitIncludes.rent ? cfg.rent : 0)
+    + (cfg.splitIncludes.parking ? cfg.parking : 0)
+    + (cfg.splitIncludes.utilities ? cfg.utilities : 0)
+    + (cfg.splitIncludes.wifi ? cfg.wifi : 0);
+  const joseRentShare = Math.round(splitTotal * data.josePct);
+  const emiRentShare = splitTotal - joseRentShare;
+
+  const toggleSplitItem = (key: string) => {
+    setCfg((prev: any) => ({
+      ...prev,
+      splitIncludes: { ...prev.splitIncludes, [key]: !prev.splitIncludes[key] },
+    }));
+  };
 
   const toggleMonth = (idx: number) => {
     setCfg((prev: any) => {
@@ -186,8 +199,32 @@ function ApartmentTab({ cfg, setCfg }: any) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 12, border: "1px solid #1a1a1a", padding: "20px" }}>
-            <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14, fontWeight: 600 }}>Split (All Costs)</div>
-            <SplitSlider pct={cfg.splitPct} onChange={update("splitPct")} joseAmt={joseRentShare} emiAmt={emiRentShare} total={totalMonthlyHousing} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Split</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {([
+                  { key: "rent", label: "Rent", value: cfg.rent },
+                  { key: "parking", label: "Parking", value: cfg.parking },
+                  { key: "utilities", label: "Utilities", value: cfg.utilities },
+                  { key: "wifi", label: "WiFi", value: cfg.wifi },
+                ] as const).map((item) => {
+                  const on = cfg.splitIncludes[item.key];
+                  return (
+                    <button key={item.key} onClick={() => toggleSplitItem(item.key)} style={{
+                      background: on ? "#4ade8018" : "#111",
+                      color: on ? "#4ade80" : "#555",
+                      border: on ? "1px solid #4ade8044" : "1px solid #222",
+                      borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 600,
+                      cursor: "pointer", fontFamily: "'DM Mono', monospace",
+                      transition: "all 0.15s",
+                    }}>
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <SplitSlider pct={cfg.splitPct} onChange={update("splitPct")} joseAmt={joseRentShare} emiAmt={emiRentShare} total={splitTotal} />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
